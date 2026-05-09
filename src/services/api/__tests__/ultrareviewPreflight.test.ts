@@ -3,9 +3,10 @@
  * Verifies all three action enum states (proceed/confirm/blocked),
  * network/HTTP error handling, and Zod schema mismatch fallback.
  */
-import { describe, expect, mock, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 import { debugMock } from '../../../../tests/mocks/debug.js'
 import { logMock } from '../../../../tests/mocks/log.js'
+import { setupAxiosMock } from '../../../../tests/mocks/axios.js'
 
 // Mock dependency chain before any subject import
 mock.module('src/utils/debug.ts', debugMock)
@@ -46,15 +47,19 @@ const mockAxiosPost = mock(async (..._args: any[]): Promise<any> => {
   throw new Error('not configured')
 })
 
-mock.module('axios', () => {
-  const axiosMock = {
-    post: mockAxiosPost,
-    isAxiosError: (e: unknown) =>
-      typeof e === 'object' &&
-      e !== null &&
-      (e as { isAxiosError?: boolean }).isAxiosError === true,
-  }
-  return { default: axiosMock, ...axiosMock }
+const axiosHandle = setupAxiosMock()
+axiosHandle.stubs.post = mockAxiosPost
+axiosHandle.stubs.isAxiosError = (e: unknown) =>
+  typeof e === 'object' &&
+  e !== null &&
+  (e as { isAxiosError?: boolean }).isAxiosError === true
+
+beforeAll(() => {
+  axiosHandle.useStubs = true
+})
+
+afterAll(() => {
+  axiosHandle.useStubs = false
 })
 
 import {

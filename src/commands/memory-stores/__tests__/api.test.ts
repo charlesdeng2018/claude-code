@@ -11,6 +11,7 @@
  */
 
 import {
+  afterAll,
   afterEach,
   beforeAll,
   beforeEach,
@@ -21,6 +22,7 @@ import {
 } from 'bun:test'
 import { debugMock } from '../../../../tests/mocks/debug.js'
 import { logMock } from '../../../../tests/mocks/log.js'
+import { setupAxiosMock } from '../../../../tests/mocks/axios.js'
 
 mock.module('src/utils/log.ts', logMock)
 mock.module('src/utils/debug.ts', debugMock)
@@ -60,16 +62,12 @@ const axiosIsAxiosError = mock((err: unknown) => {
   )
 })
 
-mock.module('axios', () => ({
-  default: {
-    get: axiosGetMock,
-    post: axiosPostMock,
-    patch: axiosPatchMock,
-    delete: axiosDeleteMock,
-    isAxiosError: axiosIsAxiosError,
-  },
-  isAxiosError: axiosIsAxiosError,
-}))
+const axiosHandle = setupAxiosMock()
+axiosHandle.stubs.get = axiosGetMock
+axiosHandle.stubs.post = axiosPostMock
+axiosHandle.stubs.patch = axiosPatchMock
+axiosHandle.stubs.delete = axiosDeleteMock
+axiosHandle.stubs.isAxiosError = axiosIsAxiosError
 
 // ── Lazy import after mocks ─────────────────────────────────────────────────
 let listStores: typeof import('../memoryStoresApi.js').listStores
@@ -85,6 +83,7 @@ let listVersions: typeof import('../memoryStoresApi.js').listVersions
 let redactVersion: typeof import('../memoryStoresApi.js').redactVersion
 
 beforeAll(async () => {
+  axiosHandle.useStubs = true
   const mod = await import('../memoryStoresApi.js')
   listStores = mod.listStores
   getStore = mod.getStore
@@ -97,6 +96,10 @@ beforeAll(async () => {
   deleteMemory = mod.deleteMemory
   listVersions = mod.listVersions
   redactVersion = mod.redactVersion
+})
+
+afterAll(() => {
+  axiosHandle.useStubs = false
 })
 
 beforeEach(() => {

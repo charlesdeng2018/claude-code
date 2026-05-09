@@ -15,17 +15,26 @@
 import { afterAll, describe, expect, mock, test } from 'bun:test';
 import { debugMock } from '../../../../tests/mocks/debug.js';
 import { logMock } from '../../../../tests/mocks/log.js';
+import { setupAxiosMock } from '../../../../tests/mocks/axios.js';
 
-// Pre-import the real react module so we can delegate after this suite.
-// Bun's mock.module is process-global / last-write-wins; without delegation
-// the stub createElement leaks into other test files (e.g.
-// SnapshotUpdateDialog.test.tsx) that need real React.createElement.
+// Pre-import the real react and ink modules so we can delegate after this
+// suite. Bun's mock.module is process-global / last-write-wins; without
+// delegation the stub createElement / stub ink components leak into other
+// test files (e.g. SnapshotUpdateDialog.test.tsx, AgentsPlatformView.test.tsx)
+// that need real React.createElement and real Box/Text components.
 const _realReactMod = (await import('react')) as Record<string, unknown> & {
   default?: Record<string, unknown>;
 };
+const _realInkMod = (await import('@anthropic/ink')) as Record<string, unknown>;
 let _useStubReactForUltrareview = true;
+let _useStubInkForUltrareview = true;
 afterAll(() => {
   _useStubReactForUltrareview = false;
+  _useStubInkForUltrareview = false;
+  // The handle reference exists by the time afterAll runs (TDZ resolves via
+  // closure). Flip useStubs off so the spread-real fall-through kicks in for
+  // any test file that runs after this one in the same process.
+  _ultrareviewAxiosHandle.useStubs = false;
 });
 
 // Mock dependency chain before any subject import
@@ -79,14 +88,15 @@ const mockAxiosPost = mock(
   }),
 );
 
-mock.module('axios', () => {
-  const axiosMock = {
-    post: mockAxiosPost,
-    isAxiosError: (e: unknown) =>
-      typeof e === 'object' && e !== null && (e as { isAxiosError?: boolean }).isAxiosError === true,
-  };
-  return { default: axiosMock, ...axiosMock };
-});
+// Spread real axios + flag-gate stubs so the per-test mockAxiosPost stops
+// leaking into later test files (mock.module is process-global). Default ON
+// for this suite; afterAll above flips _useStubReactForUltrareview, but here
+// we tie axios cleanup to the helper's own flag — see suite-level afterAll.
+const _ultrareviewAxiosHandle = setupAxiosMock();
+_ultrareviewAxiosHandle.useStubs = true;
+_ultrareviewAxiosHandle.stubs.post = mockAxiosPost;
+_ultrareviewAxiosHandle.stubs.isAxiosError = (e: unknown) =>
+  typeof e === 'object' && e !== null && (e as { isAxiosError?: boolean }).isAxiosError === true;
 
 // Mock detectCurrentRepositoryWithHost
 mock.module('src/utils/detectRepository.js', () => ({
@@ -128,11 +138,21 @@ mock.module('react', () => {
   };
 });
 
-mock.module('@anthropic/ink', () => ({
-  Box: 'Box',
-  Dialog: 'Dialog',
-  Text: 'Text',
-}));
+// Spread real ink + flag-gate the stub components. Without spread, the bare
+// { Box: 'Box', Dialog: 'Dialog', Text: 'Text' } leaks into every later test
+// file (e.g. AgentsPlatformView.test.tsx) that imports @anthropic/ink — those
+// consumers receive strings instead of real components and rendering breaks.
+mock.module('@anthropic/ink', () => {
+  if (_useStubInkForUltrareview) {
+    return {
+      ..._realInkMod,
+      Box: 'Box',
+      Dialog: 'Dialog',
+      Text: 'Text',
+    };
+  }
+  return _realInkMod;
+});
 
 mock.module('src/components/CustomSelect/select.js', () => ({
   Select: 'Select',

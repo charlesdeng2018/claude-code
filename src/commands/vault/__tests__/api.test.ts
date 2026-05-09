@@ -12,6 +12,7 @@
  */
 
 import {
+  afterAll,
   afterEach,
   beforeAll,
   beforeEach,
@@ -22,6 +23,7 @@ import {
 } from 'bun:test'
 import { debugMock } from '../../../../tests/mocks/debug.js'
 import { logMock } from '../../../../tests/mocks/log.js'
+import { setupAxiosMock } from '../../../../tests/mocks/axios.js'
 
 mock.module('src/utils/log.ts', logMock)
 mock.module('src/utils/debug.ts', debugMock)
@@ -60,15 +62,11 @@ const axiosIsAxiosError = mock((err: unknown) => {
   )
 })
 
-mock.module('axios', () => ({
-  default: {
-    get: axiosGetMock,
-    post: axiosPostMock,
-    delete: axiosDeleteMock,
-    isAxiosError: axiosIsAxiosError,
-  },
-  isAxiosError: axiosIsAxiosError,
-}))
+const axiosHandle = setupAxiosMock()
+axiosHandle.stubs.get = axiosGetMock
+axiosHandle.stubs.post = axiosPostMock
+axiosHandle.stubs.delete = axiosDeleteMock
+axiosHandle.stubs.isAxiosError = axiosIsAxiosError
 
 // ── Lazy import after mocks ─────────────────────────────────────────────────
 let listVaults: typeof import('../vaultsApi.js').listVaults
@@ -80,6 +78,7 @@ let addCredential: typeof import('../vaultsApi.js').addCredential
 let archiveCredential: typeof import('../vaultsApi.js').archiveCredential
 
 beforeAll(async () => {
+  axiosHandle.useStubs = true
   const mod = await import('../vaultsApi.js')
   listVaults = mod.listVaults
   createVault = mod.createVault
@@ -88,6 +87,10 @@ beforeAll(async () => {
   listCredentials = mod.listCredentials
   addCredential = mod.addCredential
   archiveCredential = mod.archiveCredential
+})
+
+afterAll(() => {
+  axiosHandle.useStubs = false
 })
 
 beforeEach(() => {

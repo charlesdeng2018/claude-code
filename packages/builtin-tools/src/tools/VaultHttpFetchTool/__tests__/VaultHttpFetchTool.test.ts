@@ -1,18 +1,27 @@
 import {
   afterAll,
   afterEach,
+  beforeAll,
   beforeEach,
   describe,
   expect,
   mock,
   test,
 } from 'bun:test'
+import { setupAxiosMock } from '../../../../../../tests/mocks/axios'
 
 // After this suite finishes, switch our getSecret override off so localVault's
-// own store.test.ts (running in the same process) sees the real impl.
+// own store.test.ts (running in the same process) sees the real impl. Also
+// flip the axios stub flag off so the spread mock falls through to real axios
+// for any test file that runs after this one.
 afterAll(() => {
   useMockForGetSecret = false
   getSecretShouldThrow = false
+  axiosHandle.useStubs = false
+})
+
+beforeAll(() => {
+  axiosHandle.useStubs = true
 })
 
 // We mock the LOWER layers (axios + localVault store + http util) rather
@@ -34,9 +43,8 @@ const mockAxiosRequest = mock(
   }),
 )
 
-mock.module('axios', () => ({
-  default: { request: mockAxiosRequest },
-}))
+const axiosHandle = setupAxiosMock()
+axiosHandle.stubs.request = mockAxiosRequest
 
 let mockedSecret: string | null = 'XSECRETXX'
 let getSecretShouldThrow = false

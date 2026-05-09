@@ -1,4 +1,5 @@
 import {
+  afterAll,
   afterEach,
   beforeAll,
   beforeEach,
@@ -9,6 +10,7 @@ import {
 } from 'bun:test'
 import { debugMock } from '../../../../tests/mocks/debug.js'
 import { logMock } from '../../../../tests/mocks/log.js'
+import { setupAxiosMock } from '../../../../tests/mocks/axios.js'
 
 // Mock side-effect modules first
 mock.module('src/utils/log.ts', logMock)
@@ -48,15 +50,11 @@ const axiosIsAxiosError = mock((err: unknown) => {
   )
 })
 
-mock.module('axios', () => ({
-  default: {
-    get: axiosGetMock,
-    post: axiosPostMock,
-    delete: axiosDeleteMock,
-    isAxiosError: axiosIsAxiosError,
-  },
-  isAxiosError: axiosIsAxiosError,
-}))
+const axiosHandle = setupAxiosMock()
+axiosHandle.stubs.get = axiosGetMock
+axiosHandle.stubs.post = axiosPostMock
+axiosHandle.stubs.delete = axiosDeleteMock
+axiosHandle.stubs.isAxiosError = axiosIsAxiosError
 
 // Lazy import after mocks are in place
 let listAgents: typeof import('../agentsApi.js').listAgents
@@ -65,11 +63,16 @@ let deleteAgent: typeof import('../agentsApi.js').deleteAgent
 let runAgent: typeof import('../agentsApi.js').runAgent
 
 beforeAll(async () => {
+  axiosHandle.useStubs = true
   const mod = await import('../agentsApi.js')
   listAgents = mod.listAgents
   createAgent = mod.createAgent
   deleteAgent = mod.deleteAgent
   runAgent = mod.runAgent
+})
+
+afterAll(() => {
+  axiosHandle.useStubs = false
 })
 
 beforeEach(() => {

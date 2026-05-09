@@ -14,6 +14,7 @@
  */
 
 import {
+  afterAll,
   afterEach,
   beforeAll,
   beforeEach,
@@ -24,6 +25,7 @@ import {
 } from 'bun:test'
 import { debugMock } from '../../../../tests/mocks/debug.js'
 import { logMock } from '../../../../tests/mocks/log.js'
+import { setupAxiosMock } from '../../../../tests/mocks/axios.js'
 
 mock.module('src/utils/log.ts', logMock)
 mock.module('src/utils/debug.ts', debugMock)
@@ -62,15 +64,11 @@ const axiosIsAxiosError = mock((err: unknown) => {
   )
 })
 
-mock.module('axios', () => ({
-  default: {
-    get: axiosGetMock,
-    post: axiosPostMock,
-    delete: axiosDeleteMock,
-    isAxiosError: axiosIsAxiosError,
-  },
-  isAxiosError: axiosIsAxiosError,
-}))
+const axiosHandle = setupAxiosMock()
+axiosHandle.stubs.get = axiosGetMock
+axiosHandle.stubs.post = axiosPostMock
+axiosHandle.stubs.delete = axiosDeleteMock
+axiosHandle.stubs.isAxiosError = axiosIsAxiosError
 
 // ── Lazy import after mocks ─────────────────────────────────────────────────
 let listSkills: typeof import('../skillsApi.js').listSkills
@@ -81,6 +79,7 @@ let createSkill: typeof import('../skillsApi.js').createSkill
 let deleteSkill: typeof import('../skillsApi.js').deleteSkill
 
 beforeAll(async () => {
+  axiosHandle.useStubs = true
   const mod = await import('../skillsApi.js')
   listSkills = mod.listSkills
   getSkill = mod.getSkill
@@ -88,6 +87,10 @@ beforeAll(async () => {
   getSkillVersion = mod.getSkillVersion
   createSkill = mod.createSkill
   deleteSkill = mod.deleteSkill
+})
+
+afterAll(() => {
+  axiosHandle.useStubs = false
 })
 
 beforeEach(() => {

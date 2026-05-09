@@ -20,6 +20,7 @@ import {
 } from 'bun:test'
 import { debugMock } from '../../../../tests/mocks/debug.js'
 import { logMock } from '../../../../tests/mocks/log.js'
+import { setupAxiosMock } from '../../../../tests/mocks/axios.js'
 
 mock.module('src/utils/log.ts', logMock)
 mock.module('src/utils/debug.ts', debugMock)
@@ -73,15 +74,11 @@ const axiosIsAxiosError = mock((err: unknown) => {
   )
 })
 
-mock.module('axios', () => ({
-  default: {
-    get: axiosGetMock,
-    post: axiosPostMock,
-    delete: axiosDeleteMock,
-    isAxiosError: axiosIsAxiosError,
-  },
-  isAxiosError: axiosIsAxiosError,
-}))
+const axiosHandle = setupAxiosMock()
+axiosHandle.stubs.get = axiosGetMock
+axiosHandle.stubs.post = axiosPostMock
+axiosHandle.stubs.delete = axiosDeleteMock
+axiosHandle.stubs.isAxiosError = axiosIsAxiosError
 
 // ── fs/promises mock ─────────────────────────────────────────────────────────
 // Bun's mock.module is global per-process and last-write-wins. Replacing
@@ -119,6 +116,7 @@ let getClaudeConfigHomeDir: typeof import('../../../utils/envUtils.js').getClaud
 let origConfigDir: string | undefined
 
 beforeAll(async () => {
+  axiosHandle.useStubs = true
   const mod = await import('../launchSkillStore.js')
   callSkillStore = mod.callSkillStore
   const envMod = await import('../../../utils/envUtils.js')
@@ -130,6 +128,7 @@ beforeAll(async () => {
 // Flip the stub flag off after this suite so localVault/store and other
 // fs-dependent tests in the same process see real readFile/readdir/etc.
 afterAll(() => {
+  axiosHandle.useStubs = false
   useSkillStoreFsStubs = false
 })
 
