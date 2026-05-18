@@ -1,5 +1,17 @@
 # Claude Code Best V5 (CCB)
 
+### Claude Code Best (CCB) - Anthropic 官方 Claude Code CLI 工具的源码反编译/逆向还原项目
+
+https://github.com/claude-code-best/claude-code - Claude Code Best V5 (CCB) 
+
+https://github.com/claude-code-best/claude-code/tree/v2.4.4 @ 2026-05-18
+
+
+https://deepwiki.com/claude-code-best/claude-code
+https://ccb.agent-aura.top/docs/introduction/what-is-claude-code -***-
+
+---
+
 [![GitHub Stars](https://img.shields.io/github/stars/claude-code-best/claude-code?style=flat-square&logo=github&color=yellow)](https://github.com/claude-code-best/claude-code/stargazers)
 [![GitHub Contributors](https://img.shields.io/github/contributors/claude-code-best/claude-code?style=flat-square&color=green)](https://github.com/claude-code-best/claude-code/graphs/contributors)
 [![GitHub Issues](https://img.shields.io/github/issues/claude-code-best/claude-code?style=flat-square&color=orange)](https://github.com/claude-code-best/claude-code/issues)
