@@ -56,3 +56,7 @@ credentials.json
 .test-progress.md
 .squash-tmp/
 .git.*-backup
+
+### Local development environment files and worklog files
+.env.local
+worklog*.*
