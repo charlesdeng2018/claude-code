@@ -60,3 +60,5 @@ credentials.json
 ### Local development environment files and worklog files
 .env.local
 worklog*.*
+
+.codex
